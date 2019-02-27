@@ -83,6 +83,11 @@ public class Pool<C> {
     ContextImpl context;  // Context associated with the connection
     long weight;              // The weight that participates in the pool weight
     long expirationTimestamp; // The expiration timestamp when (concurrency == capacity) otherwise -1L
+    long permanentExpirationTimestamp; // The unconditional expiration. Connection will expire even if it's been used recently
+
+    public boolean isExpired() {
+      return permanentExpirationTimestamp <= System.currentTimeMillis();
+    }
 
     @Override
     public String toString() {
@@ -109,7 +114,7 @@ public class Pool<C> {
 
   private boolean closed;
   private final Handler<Void> poolClosed;
-
+  private final long keepAlivePermanentTimeout;
 
   public Pool(ConnectionProvider<C> connector,
               int queueMaxSize,
@@ -118,7 +123,8 @@ public class Pool<C> {
               Handler<Void> poolClosed,
               BiConsumer<Channel, C> connectionAdded,
               BiConsumer<Channel, C> connectionRemoved,
-              boolean fifo) {
+              boolean fifo,
+              long keepAlivePermanentTimeout) {
     this.maxWeight = maxWeight;
     this.initialWeight = initialWeight;
     this.connector = connector;
@@ -128,6 +134,7 @@ public class Pool<C> {
     this.connectionAdded = connectionAdded;
     this.connectionRemoved = connectionRemoved;
     this.fifo = fifo;
+    this.keepAlivePermanentTimeout = keepAlivePermanentTimeout;
   }
 
   public synchronized int waitersInQueue() {
@@ -180,18 +187,27 @@ public class Pool<C> {
    * @return wether the waiter is assigned a connection (or a future connection)
    */
   private boolean acquireConnection(Waiter<C> waiter) {
-    if (available.size() > 0) {
-      Holder<C> conn = available.peek();
-      if (--conn.capacity == 0) {
-        conn.expirationTimestamp = -1L;
-        available.poll();
+    Holder<C> conn;
+    while ((conn = available.poll()) != null && conn.isExpired()) {
+      if (conn.capacity == conn.concurrency) {
+        closeConnection(conn);
+      }
+    }
+    Holder<C> finalConn = conn;
+    if (conn != null) {
+      if (--conn.capacity > 0) {
+        if (fifo) {
+          available.addLast(conn);
+        } else {
+          available.addFirst(conn);
+        }
       }
       ContextImpl ctx = conn.context;
       ctx.nettyEventLoop().execute(() -> {
         synchronized (Pool.this) {
           waitersCount--;
         }
-        waiter.handler.handle(Future.succeededFuture(conn.connection));
+        waiter.handler.handle(Future.succeededFuture(finalConn.connection));
       });
       return true;
     } else if (weight < maxWeight) {
@@ -360,11 +376,17 @@ public class Pool<C> {
       conn.capacity = 0;
       connector.close(conn.connection);
     } else {
-      if (conn.capacity == 0) {
-        if (fifo) {
-          available.addLast(conn);
-        } else {
-          available.addFirst(conn);
+      if (conn.isExpired()) {
+        if (newCapacity == conn.concurrency) {
+          closeConnection(conn);
+        }
+      } else {
+        if (conn.capacity == 0) {
+          if (fifo) {
+            available.addLast(conn);
+          } else {
+            available.addFirst(conn);
+          }
         }
       }
       conn.expirationTimestamp = timestamp;
@@ -381,6 +403,7 @@ public class Pool<C> {
     holder.weight = weight;
     holder.capacity = concurrency;
     holder.expirationTimestamp = -1L;
+    holder.permanentExpirationTimestamp = System.currentTimeMillis() + keepAlivePermanentTimeout;
     connectionAdded.accept(holder.channel, holder.connection);
   }
 

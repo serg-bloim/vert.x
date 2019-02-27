@@ -19,7 +19,7 @@ import io.vertx.core.http.HttpVersion;
 import io.vertx.core.http.impl.pool.Pool;
 import io.vertx.core.spi.metrics.HttpClientMetrics;
 
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -127,7 +127,8 @@ class ConnectionManager {
           },
           connectionMap::put,
           connectionMap::remove,
-          client.getOptions().getConnectionFifo());
+          client.getOptions().getConnectionFifo(),
+          client.getOptions().getKeepAlivePermanentTimeout());
         return new Endpoint(pool, metric);
       });
       Object metric;

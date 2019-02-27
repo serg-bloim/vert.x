@@ -17,6 +17,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.impl.pool.*;
 import io.vertx.core.impl.ContextImpl;
 import io.vertx.test.core.VertxTestBase;
@@ -101,8 +102,8 @@ public class ConnectionPoolTest extends VertxTestBase {
             synchronized (FakeConnectionManager.this) {
               active.remove(conn);
             }
-          }, fifo
-          );
+          }, fifo,
+            HttpClientOptions.DEFAULT_PERMANENT_KEEP_ALIVE_TIMEOUT);
         }
       }
       pool.getConnection(waiter.context, waiter.handler);

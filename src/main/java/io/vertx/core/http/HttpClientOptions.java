@@ -75,6 +75,11 @@ public class HttpClientOptions extends ClientOptionsBase {
   public static final int DEFAULT_KEEP_ALIVE_TIMEOUT = 60;
 
   /**
+   * The default keep alive permanent timeout for HTTP/1.1 connection can send = Infinite(~ 68 years)
+   */
+  public static final int DEFAULT_PERMANENT_KEEP_ALIVE_TIMEOUT = Integer.MAX_VALUE;
+
+  /**
    * Default value of whether the client will attempt to use compression = false
    */
   public static final boolean DEFAULT_TRY_USE_COMPRESSION = false;
@@ -200,6 +205,7 @@ public class HttpClientOptions extends ClientOptionsBase {
   private boolean forceSni;
   private int decoderInitialBufferSize;
   private boolean connectionFifo;
+  private int keepAlivePermanentTimeout;
 
   /**
    * Default constructor
@@ -220,6 +226,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     this.maxPoolSize = other.getMaxPoolSize();
     this.keepAlive = other.isKeepAlive();
     this.keepAliveTimeout = other.getKeepAliveTimeout();
+    this.keepAlivePermanentTimeout = other.getKeepAlivePermanentTimeout();
     this.pipelining = other.isPipelining();
     this.pipeliningLimit = other.getPipeliningLimit();
     this.http2MaxPoolSize = other.getHttp2MaxPoolSize();
@@ -274,6 +281,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     maxPoolSize = DEFAULT_MAX_POOL_SIZE;
     keepAlive = DEFAULT_KEEP_ALIVE;
     keepAliveTimeout = DEFAULT_KEEP_ALIVE_TIMEOUT;
+    keepAlivePermanentTimeout = DEFAULT_PERMANENT_KEEP_ALIVE_TIMEOUT;
     pipelining = DEFAULT_PIPELINING;
     pipeliningLimit = DEFAULT_PIPELINING_LIMIT;
     http2MultiplexingLimit = DEFAULT_HTTP2_MULTIPLEXING_LIMIT;
@@ -1101,6 +1109,14 @@ public class HttpClientOptions extends ClientOptionsBase {
     return this;
   }
 
+  public int getKeepAlivePermanentTimeout() {
+    return keepAlivePermanentTimeout;
+  }
+
+  public void setKeepAlivePermanentTimeout(int keepAlivePermanentTimeout) {
+    this.keepAlivePermanentTimeout = keepAlivePermanentTimeout;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -1134,6 +1150,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     if (http2KeepAliveTimeout != that.http2KeepAliveTimeout) return false;
     if (poolCleanerPeriod != that.poolCleanerPeriod) return false;
     if (connectionFifo != that.connectionFifo) return false;
+    if (keepAlivePermanentTimeout != that.keepAlivePermanentTimeout) return false;
 
     return true;
   }
@@ -1166,6 +1183,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     result = 31 * result + http2KeepAliveTimeout;
     result = 31 * result + poolCleanerPeriod;
     result = 31 * result + (connectionFifo ? 1 : 0);
+    result = 31 * result + keepAlivePermanentTimeout;
     return result;
   }
 
