@@ -165,6 +165,11 @@ public class HttpClientOptions extends ClientOptionsBase {
    */
   public static final int DEFAULT_POOL_CLEANER_PERIOD = 1000;
 
+  /**
+   * Default connectionFifo setting = false
+   */
+  public static final boolean DEFAULT_CONNECTION_FIFO = false;
+
   private boolean verifyHost = true;
   private int maxPoolSize;
   private boolean keepAlive;
@@ -194,6 +199,7 @@ public class HttpClientOptions extends ClientOptionsBase {
   private int maxRedirects;
   private boolean forceSni;
   private int decoderInitialBufferSize;
+  private boolean connectionFifo;
 
   /**
    * Default constructor
@@ -238,6 +244,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     this.forceSni = other.forceSni;
     this.decoderInitialBufferSize = other.getDecoderInitialBufferSize();
     this.poolCleanerPeriod = other.getPoolCleanerPeriod();
+    this.connectionFifo = other.getConnectionFifo();
   }
 
   /**
@@ -291,6 +298,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     forceSni = DEFAULT_FORCE_SNI;
     decoderInitialBufferSize = DEFAULT_DECODER_INITIAL_BUFFER_SIZE;
     poolCleanerPeriod = DEFAULT_POOL_CLEANER_PERIOD;
+    connectionFifo = DEFAULT_CONNECTION_FIFO;
   }
 
   @Override
@@ -1068,6 +1076,31 @@ public class HttpClientOptions extends ClientOptionsBase {
     return this;
   }
 
+  /**
+   * @return the connection pool fifo setting.
+   */
+  public boolean getConnectionFifo() {
+    return connectionFifo;
+  }
+
+  /**
+   *
+   * Set the connection pool fifo setting.
+   * When keepAlive == true, a connection pool maintains a list of available connections.
+   * If fifo = false, a recycled connection will be added into begging of the list. And thus will be used for the next request.
+   * If fifo = true, a recycled connection will be added into end of the list. And thus will be used after all other available connections.
+   *
+   * If connections point to a load balancer backed by multiple servers, 'fifo == true' allows to shuffle connections
+   * and makes traffic distribution more uniform.
+   *
+   * @param connectionFifo fifo setting
+   * @return a reference to this, so the API can be used fluently
+   */
+  public HttpClientOptions setConnectionFifo(boolean connectionFifo) {
+    this.connectionFifo = connectionFifo;
+    return this;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -1100,6 +1133,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     if (keepAliveTimeout != that.keepAliveTimeout) return false;
     if (http2KeepAliveTimeout != that.http2KeepAliveTimeout) return false;
     if (poolCleanerPeriod != that.poolCleanerPeriod) return false;
+    if (connectionFifo != that.connectionFifo) return false;
 
     return true;
   }
@@ -1131,6 +1165,7 @@ public class HttpClientOptions extends ClientOptionsBase {
     result = 31 * result + keepAliveTimeout;
     result = 31 * result + http2KeepAliveTimeout;
     result = 31 * result + poolCleanerPeriod;
+    result = 31 * result + (connectionFifo ? 1 : 0);
     return result;
   }
 

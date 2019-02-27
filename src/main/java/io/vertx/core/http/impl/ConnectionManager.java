@@ -21,8 +21,6 @@ import io.vertx.core.spi.metrics.HttpClientMetrics;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * The connection manager associates remote hosts with pools, it also tracks all connections so they can be closed
@@ -129,7 +127,7 @@ class ConnectionManager {
           },
           connectionMap::put,
           connectionMap::remove,
-          false);
+          client.getOptions().getConnectionFifo());
         return new Endpoint(pool, metric);
       });
       Object metric;
